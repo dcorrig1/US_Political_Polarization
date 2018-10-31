@@ -1,0 +1,226 @@
+---
+title: "EnhancedCountyData"
+output: html_document
+---
+
+```{r} 
+#Import packages
+library(tidyverse)
+library(ggplot2)
+library(maps)
+```
+
+```{r}
+#Load the 1980 to 2016 Democratic/Republican county CSV file, and rename the first column
+Counties80to16 = read.csv('../DF_Cleanup/All80to16DRmod.csv')
+colnames(Counties80to16)[1] = "Candidate"
+head(Counties80to16)
+```
+
+
+```{r}
+#Gather/spread to put D and R votes together, rearrange the DF
+Counties80to16 = unite(Counties80to16, Cand_Vote, Candidate, VoteTotal, sep="_")
+Counties80to16 = spread(Counties80to16, key="PartyCode", value="Cand_Vote")
+Counties80to16 = separate(Counties80to16, Democratic, into=c("D_Cand", "D_Vote"), sep="_")
+Counties80to16 = separate(Counties80to16, Republican, into=c('R_Cand', 'R_Vote'), sep="_")
+Counties80to16$D_Vote = as.integer(Counties80to16$D_Vote)
+Counties80to16$R_Vote = as.integer(Counties80to16$R_Vote)
+Counties80to16 = Counties80to16[,c(4,3,1,2,5,7,6,8)]
+head(Counties80to16)
+
+```
+```{r}
+Counties80to16 = Counties80to16 %>% mutate(Total_Vote = D_Vote+R_Vote)
+
+Counties80to16ByYear = Counties80to16 %>% group_by(Year) %>% summarize(Total_Year=sum(Total_Vote), TotalD_Year=sum(D_Vote), Total_RYear=sum(R_Vote))
+Counties80to16ByStateYear = Counties80to16 %>% group_by(State, Year) %>% summarize(StateTotal_Year=sum(Total_Vote), StateTotal_DYear=sum(D_Vote), StateTotal_RYear=sum(R_Vote))
+head(Counties80to16ByYear)
+head(Counties80to16ByStateYear)
+
+Counties80to16 = left_join(left_join(Counties80to16, Counties80to16ByYear, by="Year"), Counties80to16ByStateYear, by=c("State", "Year"))
+
+
+```
+
+```{r}
+CensusData80to16Decades = read.csv("CensusJoinDataOnlyAK.csv")
+head(CensusData80to16Decades)
+CreateElectionYearNumbersPop = function(ColumnName) {
+  CensusData80to16Decades[,paste0(ColumnName, "_1984")] = 0.6*CensusData80to16Decades[,paste0(ColumnName, "_1980")] + 0.4*CensusData80to16Decades[,paste0(ColumnName, "_1990")]
+  CensusData80to16Decades[,paste0(ColumnName, "_1988")] = 0.2*CensusData80to16Decades[,paste0(ColumnName, "_1980")] + 0.8*CensusData80to16Decades[,paste0(ColumnName, "_1990")]
+  CensusData80to16Decades[,paste0(ColumnName, "_1992")] = 0.2*CensusData80to16Decades[,paste0(ColumnName, "_2000")] + 0.8*CensusData80to16Decades[,paste0(ColumnName, "_1990")]
+  CensusData80to16Decades[,paste0(ColumnName, "_1996")] = 0.6*CensusData80to16Decades[,paste0(ColumnName, "_2000")] + 0.4*CensusData80to16Decades[,paste0(ColumnName, "_1990")]
+  CensusData80to16Decades[,paste0(ColumnName, "_2004")] = 0.6*CensusData80to16Decades[,paste0(ColumnName, "_2000")] + 0.4*CensusData80to16Decades[,paste0(ColumnName, "_2010")]
+  CensusData80to16Decades[,paste0(ColumnName, "_2008")] = 0.2*CensusData80to16Decades[,paste0(ColumnName, "_2000")] + 0.8*CensusData80to16Decades[,paste0(ColumnName, "_2010")]
+  CensusData80to16Decades[,paste0(ColumnName, "_2012")] = 0.667*CensusData80to16Decades[,paste0(ColumnName, "_2016")] + 0.333*CensusData80to16Decades[,paste0(ColumnName, "_2010")]
+  return(CensusData80to16Decades)
+}
+CreateElectionYearNumbers = function(ColumnName) {
+  CensusData80to16Decades[,paste0(ColumnName, "_1984")] = 0.6*CensusData80to16Decades[,paste0(ColumnName, "_1980")] + 0.4*CensusData80to16Decades[,paste0(ColumnName, "_1990")]
+  CensusData80to16Decades[,paste0(ColumnName, "_1988")] = 0.2*CensusData80to16Decades[,paste0(ColumnName, "_1980")] + 0.8*CensusData80to16Decades[,paste0(ColumnName, "_1990")]
+  CensusData80to16Decades[,paste0(ColumnName, "_1992")] = 0.2*CensusData80to16Decades[,paste0(ColumnName, "_2000")] + 0.8*CensusData80to16Decades[,paste0(ColumnName, "_1990")]
+  CensusData80to16Decades[,paste0(ColumnName, "_1996")] = 0.6*CensusData80to16Decades[,paste0(ColumnName, "_2000")] + 0.4*CensusData80to16Decades[,paste0(ColumnName, "_1990")]
+  CensusData80to16Decades[,paste0(ColumnName, "_2004")] = 0.6*CensusData80to16Decades[,paste0(ColumnName, "_2000")] + 0.4*CensusData80to16Decades[,paste0(ColumnName, "_2010")]
+  CensusData80to16Decades[,paste0(ColumnName, "_2008")] = 0.2*CensusData80to16Decades[,paste0(ColumnName, "_2000")] + 0.8*CensusData80to16Decades[,paste0(ColumnName, "_2010")]
+  return(CensusData80to16Decades)
+}
+
+```
+
+```{r}
+CensusData80to16Decades = CreateElectionYearNumbersPop("Pop")
+CensusData80to16Decades = CreateElectionYearNumbers("UrbPop")
+CensusData80to16Decades = CreateElectionYearNumbers("WhitePop")
+CensusData80to16Decades = CreateElectionYearNumbers("BlackPop")
+CensusData80to16Decades = CreateElectionYearNumbers("NatAmerPop")
+CensusData80to16Decades = CreateElectionYearNumbers("AsianPop")
+CensusData80to16Decades = CreateElectionYearNumbers("HispPop")
+CensusData80to16Decades = CreateElectionYearNumbers("WhiteNHPop")
+CensusData80to16Decades = CreateElectionYearNumbers("BlackNHPop")
+CensusData80to16Decades = CreateElectionYearNumbers("WhiteHisPop")
+CensusData80to16Decades = CreateElectionYearNumbers("BlackHisPop")
+CensusData80to16Decades = CreateElectionYearNumbers("U18Pop")
+CensusData80to16Decades = CreateElectionYearNumbers("O65Pop")
+CensusData80to16Decades = CreateElectionYearNumbers("ForBornPop")
+CensusData80to16Decades = CreateElectionYearNumbers("AdultNoCol")
+CensusData80to16Decades = CreateElectionYearNumbers("AdultCol")
+CensusData80to16Decades = CreateElectionYearNumbers("O16InLabFor")
+CensusData80to16Decades = CreateElectionYearNumbers("O16InLabForUn")
+CensusData80to16Decades = CreateElectionYearNumbers("O16NotInLabFor")
+CensusData80to16Decades = CreateElectionYearNumbers("BelowPov")
+CensusData80to16Decades = CreateElectionYearNumbers("MedianAge")
+CensusData80to16Decades = CreateElectionYearNumbers("PCIncome")
+CensusData80to16Decades = CreateElectionYearNumbers("HHIncome")
+CensusDataLong = CensusData80to16Decades %>% gather(key=Pop_Year, value=Total, 4:237)
+YearVector = rep(0, 728442)
+for(i in 1:728442){
+  YearVector[i] = as.integer(strsplit(CensusDataLong$Pop_Year[i], "_")[[1]][2])
+}
+CensusDataLong$Year = YearVector
+CensusDataLong$Pop_Year = str_replace(CensusDataLong$Pop_Year, "_....", "")
+colnames(CensusDataLong)[c(1, 2, 4)] = c("State", "County", "Metric")
+```
+
+```{r}
+CensusDataWideFixed = CensusDataLong %>% spread(key="Metric", value="Total")
+CensusDataWideFixed = CensusDataWideFixed[,-16]
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(Population=Pop)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(HispanicPct = 100*HispPop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(WhitePct = 100*WhitePop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(BlackPct = 100*BlackPop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(AsianPct = 100*AsianPop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(NatAmerPct = 100*NatAmerPop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(ForeignPct = 100*ForBornPop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(PovertyPct = 100*BelowPov/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(UrbanPct = 100*UrbPop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(NotInLaborPct = 100*O16NotInLabFor/(O16NotInLabFor+O16InLabFor+O16InLabForUn))
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(InLaborEmployedPct = 100*(O16InLabFor-O16InLabForUn)/(O16NotInLabFor+O16InLabFor+O16InLabForUn))
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(InLaborEmployedPct = 100*(O16InLabFor-O16InLabForUn)/(O16NotInLabFor+O16InLabFor+O16InLabForUn))
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(UnemploymentRate = 100*(O16InLabForUn)/(O16InLabFor+O16InLabForUn))
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(CollegeDegree = 100*AdultCol/(AdultCol+AdultNoCol))
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(Under18Pct = 100*U18Pop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(Over65Pct = 100*O65Pop/Population)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(PerCapitaIncome = PCIncome)
+CensusDataWideFixed = CensusDataWideFixed %>% mutate(HouseholdIncome = HHIncome)
+#Now remove the previous data, we can always retrieve it here again if we wanted to, and keep the summary data
+CensusDataPercents = CensusDataWideFixed[,-(5:27)]
+
+#Now, we need to change our "2012" and "2016" percent data (which is NA right now, no numbers for 2016) and replace with the numbers for 2010
+CensusDataPercent2010Subset = CensusDataPercents %>% filter(Year=="2010") %>% select(-Population, -Year)
+CensusDataPercent2012Subset = CensusDataPercents %>% filter(Year=="2012") %>% select(Population, FIPS, Year) %>% inner_join(CensusDataPercent2010Subset, by="FIPS")
+CensusDataPercent2016Subset = CensusDataPercents %>% filter(Year=="2016") %>% select(Population, FIPS, Year) %>% inner_join(CensusDataPercent2010Subset, by="FIPS")
+CensusDataPercents = CensusDataPercents %>% filter(Year!=2012 & Year!=2016)
+CensusDataPercents = CensusDataPercents %>% bind_rows(CensusDataPercent2012Subset, CensusDataPercent2016Subset)
+
+#For our purposes, we need to remove 1990 and 2010 (census years, not election years) from this data frame, to ensure a smooth join to the Counties80to16 dataframe
+CensusDataPercents = filter(CensusDataPercents, Year!=1990 & Year!=2010)
+#Now, this data frame is exactly eight entries longer than Counties80to16. We have Cibola county 1980, La Paz County 1980 and Broomfield County 80, 84, 88, 92, 96, 00 in the CensusDataPercents Df and not in the election dataframe.
+
+sum(is.na(CensusDataPercents))
+#We have 238 NA values in this dataframe still, let's make sure they are all in these three counties
+sum(is.na(CensusDataPercents %>% filter(County=="Broomfield County")))
+#136 are from Broomfield County, Colorado
+sum(is.na(CensusDataPercents %>% filter(County=="La Paz County" & State=="Arizona")))
+#51 in La Paz County, AZ
+sum(is.na(CensusDataPercents %>% filter(County=="Cibola County" & State=="New Mexico")))
+#51 in Cibola County, NM. The total adds up to 238, check. For some of the map
+
+#Let's end by removing the 8 entries (cibola 80, La Paz 80, Broomfield 80,84,88,92,96,00) that don't have a corresponding election DF entry
+CensusDataPercents = CensusDataPercents %>% filter(County!="Broomfield County" | Year>2000) %>% filter(FIPS!=4012 | Year!=1980) %>% filter(FIPS!=35006 | Year!=1980)
+                                                   
+
+```
+
+```{r}
+#Join the election DF (Counties80to16) and the census DF (CensusDataPercents)
+
+#Start with an Outer Join test and see if there are any FIPS discrepencies
+JoinedCountyDataOuterTest = full_join(Counties80to16, CensusDataPercents, by=c("FIPS", "Year"))
+
+#We gained 10 colums (likely one FIPS code is mismatched). Let's find which one and fix the problem
+JoinedCountyDataOuterTest %>% filter(is.na(State.x)) %>% head(20)
+JoinedCountyDataOuterTest %>% filter(is.na(State.y)) %>% head(20)
+
+#We see that FIPS 46113 in the Census DF, and FIPS 46102 in the Election data are mismatched. In the case of the Election data, this is because "Oglala Lakota County, SD (FIPS 46102) is a pure rename of Shannon County, SD (FIPS 46113). No boundary or population changes occurred, so we can just change FIPS 46113 in the Census data set to 46102. 
+CensusDataPercents$FIPS[CensusDataPercents$FIPS==46113] = 46102
+
+#Now, the outer join should produce a data frame with the exact correct number of columns (31122). Let's check:
+JoinedCountyData = full_join(Counties80to16, CensusDataPercents, by=c("FIPS", "Year"))
+
+#Great! The only redundant columns here were County and State. Remove State.y and County.y and rename State.x and County.x
+JoinedCountyData = JoinedCountyData %>% select(-State.y, -County.y) %>% rename(State=State.x, County=County.x, Total_DYear=TotalD_Year)
+```
+
+```{r}
+#Let's insert some additional election variables to this dataframe
+JoinedCountyData = JoinedCountyData %>% mutate(YearMargin=100*(Total_DYear/Total_Year-Total_RYear/Total_Year))
+JoinedCountyData = JoinedCountyData %>% mutate(CountyMargin=100*(D_Vote/Total_Vote-R_Vote/Total_Vote))
+JoinedCountyData = JoinedCountyData %>% mutate(CountyRelativeMargin = CountyMargin-YearMargin)
+JoinedCountyData = JoinedCountyData %>% group_by(Year) %>% mutate(R_Rank = rank(CountyRelativeMargin, ties.method="random")) %>% ungroup()
+JoinedCountyData = JoinedCountyData %>% mutate(Year_DNet = Total_DYear-Total_RYear)
+JoinedCountyData = JoinedCountyData %>% mutate(County_Net = D_Vote-R_Vote)
+
+
+
+```
+
+```{r}
+#I also want to create a column that indicates the range, on a percentile basis, of what portion of the total margin (both D and R) was contributed by that specific county, when arranged in order. In this way, the most democratic county will contribute the range (0, n) and the most republican county will contribute the range (m, 100). The county containing percentile 50.00 will represent the "most normal" county in terms of popular vote contribution (though larges counties will tend to contribute a larger share and have a higher chance of containing any specific percentile). Also, there will be a significant gathering of counties around the actual vote margin (Republican) which contains the counties close to 50/50 split between the two candidates (thus not moving the total margin individually).
+
+#To do this, I need to create absolute value margins, a AbsYearMargin value summing these up by year, and two cumulative sum rows (start and finish), with corresponding percentile rows.
+
+JoinedCountyData = JoinedCountyData %>% mutate(AbsCountyMargin = abs(County_Net))
+JoinedCountyDataAbsYear = JoinedCountyData %>% group_by(Year) %>% summarize(TotalAbsNet = sum(AbsCountyMargin)) %>% ungroup()
+JoinedCountyData = left_join(JoinedCountyData, JoinedCountyDataAbsYear, by="Year")
+JoinedCountyData$YearStartMargin = 0
+JoinedCountyData$YearFinishMargin = JoinedCountyData$TotalAbsNet
+
+JoinedCountyData = JoinedCountyData %>% arrange(desc(R_Rank))
+JoinedCountyDataFinal = JoinedCountyData
+
+
+for(i in seq(1980, 2016, 4)){
+  JoinedCountyDataPiece = JoinedCountyData %>% filter(Year==i)
+  for(j in seq(2, nrow(JoinedCountyDataPiece))){
+    JoinedCountyDataPiece$YearFinishMargin[j-1] = JoinedCountyDataPiece$YearStartMargin[j-1] + JoinedCountyDataPiece$AbsCountyMargin[j-1]
+    JoinedCountyDataPiece$YearStartMargin[j] = JoinedCountyDataPiece$YearFinishMargin[j-1]
+  }
+  JoinedCountyDataFinal = bind_rows(JoinedCountyDataFinal, JoinedCountyDataPiece)
+}
+JoinedCountyDataFinal = JoinedCountyDataFinal[31123:62244,]
+
+#A Test of this shows that we have filled in these tables with the desired information. Now we just need to insert the percentage range in the form of two new columns to correspond to YearStartMargin and YearFinishMargin.
+JoinedCountyDataFinal %>% filter(Year=="2008") %>% arrange(desc(CountyMargin)) %>% select(Year, TotalAbsNet, County, YearStartMargin, YearFinishMargin, R_Rank) %>% tail(20)
+
+#Let's add these two columns, and rename a few columns that are unclear, and we are done!
+JoinedCountyDataFinal = JoinedCountyDataFinal %>% mutate(CountyMarginStartPct = 100*(YearStartMargin/TotalAbsNet), CountyMarginFinishPct = 100*(YearFinishMargin/TotalAbsNet))
+
+JoinedCountyDataFinal = JoinedCountyDataFinal %>% mutate(County_Turnout=D_Vote+R_Vote) %>% rename(CumCounty_StartNet=YearStartMargin, CumCounty_FinishNet=YearFinishMargin, TotalNetVoteAbsValue=TotalAbsNet, County_Net_DVote=County_Net, USA_Year_DNet=Year_DNet, County_DMargin=CountyMargin, USA_Year_DMargin=YearMargin, County_RRank=R_Rank, County_NetVote_AbsValue=AbsCountyMargin, County_DVote=D_Vote, County_RVote=R_Vote, USA_Year_DVote=Total_DYear, USA_Year_RVote=Total_RYear, USA_TotalVote=Total_Vote, CumCounty_StartPct=CountyMarginStartPct, CumCounty_FinishPct=CountyMarginFinishPct)
+
+#Let's now export this dataframe as a complete CSV and use it in another workbook.
+write_csv(JoinedCountyDataFinal, "CountyElectionDataF.csv")
+
+
+```
+

@@ -1,0 +1,127 @@
+---
+title: "EDA_Visualization"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(maps)
+library(leaflet)
+CountyData = read.csv("../Census_Join/CountyElectionDataF.csv")
+CountyData = CountyData %>% mutate(County_DPct = 50+County_DMargin/2, County_RPct=50-County_DMargin/2) %>% mutate(Population=ceiling(Population))
+CountyData$FIPS = ifelse(CountyData$FIPS==46102, 46113, CountyData$FIPS)
+CountyData = CountyData %>% mutate(MarginPercentile = round(CumCounty_StartPct/2 + CumCounty_FinishPct/2),digits=1)
+```
+```{r}
+ggplot(CountyData %>% filter(Year %in% c(1980, 1992, 2012, 2016)), aes(fill=as.factor(Year), y=CountyRelativeMargin, size=Population)) + geom_boxplot() + xlab("Election Year") + ylab("Relative Margin per County") + labs(fill="Year") + theme(axis.text.x=element_blank()) + ggtitle("Relative Vote Margin, All U.S. Counties by Year")
+ggsave("Year_vs_CountyRelativeMargin.pdf")
+
+ggplot(CountyData, aes(fill=as.factor(Year), y=County_DMargin, size=Population)) + geom_boxplot() + xlab("Election Year") + ylab("Dem Margin per County") + labs(fill="Year")
+ggsave("Year_vs_CountyAbsDemMargin.pdf")
+
+ggplot(CountyData, aes(x=as.factor(Year), y=CountyRelativeMargin)) + geom_violin() + xlab("Election Year") + ylab("Relative Margin per County")
+ggsave("Year_vs_CountyRelativeMargin.pdf")
+```
+```{r}
+CountyData$DR = ifelse(CountyData$County_Net_DVote>=0, "D", "R")
+CountyData$RelDR = ifelse(CountyData$CountyRelativeMargin>=0, "D", "R")
+CountyData$RelDRParam = case_when(CountyData$CountyRelativeMargin>20 ~ "D", CountyData$CountyRelativeMargin>-20 ~ "M", CountyData$CountyRelativeMargin<=-20 ~ "R")
+sum(is.na(CountyData$CountyRelativeMargin))
+ggplot(CountyData, aes(x=County_RRank, y=CumCounty_StartPct, fill=RelDR)) + geom_col() + facet_wrap(~Year, ncol=3)
+ggplot(CountyData, aes(x=County_RRank, y=CountyRelativeMargin, fill=RelDRParam)) + geom_col() + facet_wrap(~Year, nrow=2) + scale_fill_manual(values=c("blue", "green", "red")) + xlab("County, Ranked from Most to Least Republican") + ylab("Relative Vote Margin") + ggtitle("Relative Margin of All American Counties")
+```
+```{r}
+#library(sp)
+#library(rgeos)
+#library(rgdal)
+library(maptools)
+library(leaflet)
+library(RColorBrewer)
+library(choroplethr)
+library(choroplethrMaps)
+
+data(county.regions)
+data(county.map)
+ggplot(county.map[!county.map$STATE %in% c("02"),], aes(long, lat, group=group)) + geom_polygon()
+head(county.regions)
+
+county.mapNoAKModHI = county.map %>% filter(STATE != "02") %>% mutate(long = case_when(STATE=="15" ~ long+36, STATE!="15" ~ long), lat = case_when(STATE=="15" ~ lat+8, STATE != "15" ~ lat)) %>% rename(FIPS=region)
+ggplot(county.mapNoAKModHI, aes(long, lat, group=group)) + geom_polygon()
+
+CensusElectionMapJoined = left_join(CountyData, county.mapNoAKModHI, by="FIPS") %>% arrange(order)
+ggplot(CensusElectionMapJoined %>% filter(Year==2000), aes(long, lat, fill=CountyRelativeMargin, group=group)) + geom_polygon()
+
+
+PrintYearMargins = function(Yearinput){
+  CensusPiece = CountyData %>% filter(Year==Yearinput) %>% select(Year, State, County, D_Cand, R_Cand, County_DVote, County_RVote, County_DPct, County_RPct, Population, FIPS, CountyRelativeMargin)
+  Joint = full_join(county.mapNoAKModHI, CensusPiece, by="FIPS") %>% arrange(order)
+  TempMap = ggplot(Joint, aes(long, lat, group=group, fill=CountyRelativeMargin)) + geom_polygon()
+  print(TempMap) + scale_fill_gradient2(name = "Relative Margin", labels=c("R +100", "R +50", "Even", "D +50", "D +100"), low="red2", mid="white", high="blue2", limits=c(-100, 100)) + coord_map() + theme_void()
+}
+
+PrintYearMarginsState = function(Yearinput, Stateinput){
+  CensusPiece = CountyData %>% filter(Year==Yearinput, State==Stateinput) %>% select(Year, State, County, D_Cand, R_Cand, County_DVote, County_RVote, County_DPct, County_RPct, Population, FIPS, CountyRelativeMargin)
+  Joint = right_join(county.mapNoAKModHI, CensusPiece, by="FIPS") %>% arrange(order)
+  TempMap = ggplot(Joint, aes(long, lat, group=group, fill=CountyRelativeMargin)) + geom_polygon()
+  print(TempMap) + scale_fill_gradient2(name = "Relative Margin", labels=c("Dem +100", "Dem +50", "Even", "Rep +50", "Rep +100"), low="red2", mid="white", high="blue2", limits=c(-100, 100)) + coord_map() + theme_void()
+}
+
+PrintMarginsState = function(Stateinput){
+  CensusPiece = CountyData %>% filter(State==Stateinput) %>% select(Year, State, County, D_Cand, R_Cand, County_DVote, County_RVote, County_DPct, County_RPct, Population, FIPS, CountyRelativeMargin)
+  Joint = right_join(county.mapNoAKModHI, CensusPiece, by="FIPS") %>% arrange(order)
+  TempMap = ggplot(Joint, aes(long, lat, group=group, fill=CountyRelativeMargin)) + geom_polygon()
+  print(TempMap) + scale_fill_gradient2(name = "Relative Margin", labels=c("Dem +100", "Dem +50", "Even", "Rep +50", "Rep +100"), low="red2", mid="white", high="blue2", limits=c(-100, 100)) + coord_map() + theme_void() + facet_wrap(~Year, ncol=4)
+}
+
+PrintMarginsCounty = function(Stateinput, Countyinput){
+  CensusPiece = CountyData %>% filter(State==Stateinput, County==Countyinput) %>% select(Year, State, County, D_Cand, R_Cand, County_DVote, County_RVote, County_DPct, County_RPct, Population, FIPS, CountyRelativeMargin, MarginPercentile)
+  Joint = right_join(county.mapNoAKModHI, CensusPiece, by="FIPS") %>% arrange(order)
+  TempMap = ggplot(Joint, aes(long, lat, group=group, fill=CountyRelativeMargin)) + geom_polygon()
+  print(TempMap) + scale_fill_gradient2(name = "Relative Margin", labels=c("Dem +100", "Dem +50", "Even", "Rep +50", "Rep +100"), low="red2", mid="white", high="blue2", limits=c(-100, 100)) + coord_map() + theme_void() + facet_wrap(~Year, ncol=4) + geom_text(data=Joint, aes(mean(long), mean(lat), label=round(CountyRelativeMargin, digits=1)))
+}
+
+PrintTargetCounty = function(TargetRange, Yearinput){
+  CensusPiece = CountyData %>% filter(Year==Yearinput, CumCounty_StartPct<=TargetRange) %>% filter(CumCounty_FinishPct>=TargetRange) %>% select(Year, State, County, D_Cand, R_Cand, County_DVote, County_RVote, County_DPct, County_RPct, Population, FIPS, CountyRelativeMargin, MarginPercentile, DR, County_NetVote_AbsValue, County_DPct, County_RPct)
+  Joint = right_join(county.mapNoAKModHI, CensusPiece, by="FIPS") %>% arrange(order)
+  TempMap = ggplot(Joint, aes(long, lat, group=group, fill=CountyRelativeMargin)) + geom_polygon()
+  print(TempMap) + scale_fill_gradient2(name = "Relative Margin", labels=c("Dem +100", "Dem +50", "Even", "Rep +50", "Rep +100"), low="red2", mid="white", high="blue2", limits=c(-100, 100)) + coord_map() + theme_void() + geom_text(data=Joint, aes(mean(long), mean(lat), label=paste0(County, " County", "\n", State, "\n", DR, " + ", County_NetVote_AbsValue, "\n", "Dem: ", round(County_DPct), " Rep: ", round(County_RPct))))
+}
+
+
+PrintYearMargins(1980)
+PrintYearMargins(2016)
+
+PrintMarginsState("New Jersey")
+
+PrintMarginsCounty("New Jersey", "Middlesex")
+
+ggplot(CountyData %>% filter(CountyRelativeMargin<=0, Year==2000 | Year==2016), aes(x=County_RRank, y=CountyRelativeMargin, color=as.character(Year))) + geom_point()
+
+CountyData16 = CountyData %>% filter(Year==2016, FIPS!=8014) %>% arrange(FIPS)
+CountyData00 = CountyData %>% filter(Year==2000) %>% arrange(FIPS)
+CountyData16$Margin00 = CountyData00$CountyRelativeMargin
+CountyData16$Change_00to16 = CountyData16$CountyRelativeMargin - CountyData16$Margin00
+CountyChangeJoin = CountyData16 %>% select(FIPS, Change_00to16)
+CountyData = full_join(CountyData, CountyChangeJoin, by="FIPS")
+
+ggplot(CountyData %>% filter(Year==2016), aes(x=CountyRelativeMargin, y=Change_00to16, color=CountyRelativeMargin, size=Population)) + geom_point() + scale_color_gradient2(name = "Relative Margin", labels=c("Dem +100", "Dem +50", "Even", "Rep +50", "Rep +100"), low="red2", mid="palegoldenrod", high="blue2", limits=c(-100, 100)) + theme_light() + scale_size_continuous(range=c(1,12), guide=F) + xlab("Republican/Democratic Margin, 2016") + ylab("Change 2000 to 2016") + geom_hline(yintercept=0, color="black", linetype="dashed") + geom_vline(xintercept=0, color="black", linetype="dashed") + ggtitle("Change in County Margin, 2000 to 2016")
+
+PrintTargetCounty(40, 1988)
+
+CountyData %>% filter(Year==2016, CumCounty_StartPct<=10) %>% filter(CumCounty_FinishPct>=10) %>% select(Year, State, County, D_Cand, R_Cand, County_DVote, County_RVote, County_DPct, County_RPct, Population, FIPS, CountyRelativeMargin, MarginPercentile, CumCounty_FinishPct, CumCounty_StartPct)
+
+PrintCountyTable = function(Stateinput, Countyinput){
+  CountyPiece = CountyData %>% filter(State==Stateinput, County==Countyinput)
+  renderTable(CountyPiece %>% group_by(Year) %>% mutate(Dem_Pct=round(County_DPct,1), Rep_Pct=round(County_RPct,1),  Relative_Margin=round(CountyRelativeMargin,1)) %>% select(Year, Dem_Pct, Rep_Pct, Relative_Margin))
+}
+
+PrintCountyTable("Maryland", "Anne Arundel")
+
+
+```
+
