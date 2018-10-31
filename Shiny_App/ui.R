@@ -87,8 +87,11 @@ body = dashboardBody(
 					)
 				),
 			fluidRow(
-				column(6,
+				column(3,
 					selectizeInput(inputId='ChosenState', label="Select a State", choices=sort(unique(CountyData %>% filter(State!='Alaska') %>% .$State)))
+					),
+				column(6,
+					radioButtons(inputId='ElecOrPop', label="View Election Map or Population", choices=c("Election Map", "Population"))
 					)
 				),
 			fluidRow(

@@ -136,3 +136,14 @@ PrintTargetCountyTable = function(TargetRange, Yearinput){
   return(CountyPieceActual %>% group_by(Year) %>% mutate(Dem_Pct=round(County_DPct,1), Rep_Pct=round(County_RPct,1),  
     Relative_Margin=round(CountyRelativeMargin,1)) %>% select(Year, Dem_Pct, Rep_Pct, Relative_Margin))
 }
+
+PrintPopOverlayState = function(Stateinput){
+  CensusPiece = CountyData %>% filter(State==Stateinput)
+  Joint = right_join(county.mapNoAKModHI, CensusPiece, by="FIPS") %>% arrange(order)
+  TempMap = ggplot(Joint, aes(long, lat, group=group, fill=Population)) + geom_polygon() + geom_polygon(color='black', fill=NA) + 
+  scale_fill_gradient(name = "Relative Margin",
+  	low="white", high="#006600", na.value='blue2') + coord_map() + theme_void() + facet_wrap(~Year, nrow=2) +
+    theme(text=element_text(size=20), axis.text.y=element_blank(), 
+  	axis.text.x=element_blank())
+  return(TempMap)
+}

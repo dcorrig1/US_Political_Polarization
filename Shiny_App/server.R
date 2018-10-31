@@ -22,7 +22,15 @@ shinyServer(function(input, output, session){
 
 	output$YearMaps = renderPlot({PrintYearMargins(randomVals2())})
 
-	output$StateByYear = renderPlot(PrintMarginsState(input$ChosenState))
+	ElectionorPopChoice = reactive({
+		if(input$ElecOrPop == "Election Map"){
+			PrintMarginsState(input$ChosenState)
+		} else {
+			PrintPopOverlayState(input$ChosenState)
+		}
+		})
+
+	output$StateByYear = renderPlot(ElectionorPopChoice())
 
 	observe({
 		updateSelectizeInput(session, 'FinalCounty', 
