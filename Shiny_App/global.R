@@ -97,10 +97,20 @@ PlotCountiesScatter = function(Demoinput, RangeVector){
   NewCutDF = CountyDataEasyDemoDisplays %>% arrange_(Demoinput) %>% filter(Year==2016) %>%
     slice((CountiestoCutFromBottom+1):(3113-CountiestoCutFromTop))
 
-	TempPlot = ggplot(NewCutDF, 
-		aes(x=CountyRelativeMargin, y=Change_00to16, color=CountyRelativeMargin, size=Overall_Population)) + 
-	geom_point() + scale_color_gradient2(name = "Relative Margin", labels=c("Republican", "Even", "Democratic"), breaks=c(-100, 0, 90),
-		low="red2", mid="palegoldenrod", high="blue2", limits=c(-100, 90.7)) + theme(text=element_text(size=16)) + 
+    LinearModelX = lm(NewCutDF$Change_00to16 ~ NewCutDF$CountyRelativeMargin)
+    LinearModelR2 = round(summary(LinearModelX)$r.squared, 3)
+    LinearModelPval = round(summary(LinearModelX)$coefficients[,4][2], 6)
+
+    TTest = t.test(NewCutDF$CountyRelativeMargin, CountyDataEasyDemoDisplays$CountyRelativeMargin)
+    TTestPVal = round(TTest[['p.value']], 6)
+
+    TextDF = data.frame(A=LinearModelR2, B=LinearModelPval, C=TTestPVal)
+
+	TempPlot = ggplot() +  
+	  geom_point(data=NewCutDF, mapping=aes(x=CountyRelativeMargin, y=Change_00to16, color=CountyRelativeMargin, size=Overall_Population)) + scale_color_gradient2(name = "Relative Margin", labels=c("Republican", "Even", "Democratic"), breaks=c(-100, 0, 90),
+		low="red2", mid="palegoldenrod", high="blue2", limits=c(-100, 90.7)) + theme(text=element_text(size=16)) + geom_text(data=TextDF, size=8, 
+		mapping=aes(x=55, y=-68, label=paste0("More Polarized?", "\n", "R^2: ", A, "\n", "P-val: ", B, 
+			"\n", "\n", "National Average", "\n", "R^2 = 0.426"))) + 
 	scale_size_continuous(range=c(1,12), guide=F) + xlab("Republican/Democratic Margin, 2016") + ylab("Change 2000 to 2016") + 
 	geom_hline(yintercept=0, color="black", linetype="dashed") + geom_vline(xintercept=0, color="black", linetype="dashed") + 
 	ggtitle("Change in County Margin, 2000 to 2016") + xlim(-100, 75) + ylim(-100, 60)

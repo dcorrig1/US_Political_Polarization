@@ -12,15 +12,30 @@ shinyServer(function(input, output, session){
 		})
 	
 
-	output$YearBoxplot = renderPlot({ShowBoxplotYears(randomVals1())})
+	output$YearBoxplot = renderPlot({
+		validate(
+			need(randomVals1(), "Click the Button to Display a Plot!")
+			)
+		ShowBoxplotYears(randomVals1())
+		})
 
-	output$YearBarplot = renderPlot({ShowMarginPlotYears(randomVals1())})
+	output$YearBarplot = renderPlot({
+		validate(
+			need(randomVals1(), "Click the Button to Display a Plot!")
+			)
+		ShowMarginPlotYears(randomVals1())
+		})
 
 	randomVals2 = eventReactive(input$GoButton2,{
 		input$byyear2
 		})
 
-	output$YearMaps = renderPlot({PrintYearMargins(randomVals2())})
+	output$YearMaps = renderPlot({
+		validate(
+			need(randomVals2(), "Click the Button to Display a Plot!")
+			)
+		PrintYearMargins(randomVals2())
+		})
 
 	ElectionorPopChoice = reactive({
 		if(input$ElecOrPop == "Election Map"){

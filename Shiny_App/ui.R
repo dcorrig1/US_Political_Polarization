@@ -50,9 +50,9 @@ body = dashboardBody(
 				),
 			fluidRow(
 				column(6,
-					box(align='center', height=100, width=16, background='light-blue', h3("Boxplot of all U.S. counties normalized to the National Popular Vote"))),
+					box(align='center', height=120, width=16, background='purple', h3("Boxplot of all U.S. counties normalized to the National Popular Vote (Negative Values = Replublican)"))),
 				column(6,
-					box(align='center', height=100, width=16, background='light-blue', h3("Barplot of all counties 20+ percent above average 
+					box(align='center', height=120, width=16, background='purple', h3("Barplot of all counties 20+ percent above average 
 						(Democratic/Blue, Republican/Red), or within 20 points of the National Average (Green).")))
 				),
 			fluidRow(
@@ -63,7 +63,7 @@ body = dashboardBody(
 				),
 			fluidRow(
 				column(12,
-					box(align='center', height=100, width=32, background='light-blue', h3("Map of relative vote 
+					box(align='center', height=100, width=32, background='purple', h3("Map of relative vote 
 						margins (compared to nat'l average) in selected years"))
 					)
 				),
@@ -81,7 +81,7 @@ body = dashboardBody(
 		tabItem(tabName='mapstab',
 			fluidRow(
 				column(12,
-					box(align='center', height=100, width=32, background='light-blue', h3("For this page, pick a 
+					box(align='center', height=100, width=32, background='purple', h3("For this page, pick a 
 						state and see how its political polarization has evolved over time")
 						)
 					)
@@ -120,7 +120,7 @@ body = dashboardBody(
 		tabItem(tabName='demographics',
 			fluidRow(
 				column(12,
-					box(align='center', height=100, width=32, background='light-blue', h3("On this page, choose a demographic and percentile range
+					box(align='center', height=100, width=32, background='purple', h3("On this page, choose a demographic and percentile range
 						of that demographic, and observe the D/R lean of these counties and if they have become polarized over time. Placing the range from 0 to 100
 						will show all U.S. counties.")
 						)
@@ -147,7 +147,7 @@ body = dashboardBody(
 		tabItem(tabName="percentiles",
 			fluidRow(
 				column(12,
-					box(align='center', height=100, width=32,background='light-blue', h3("Finally, let's have some fun with numbers in this 
+					box(align='center', height=100, width=32,background='purple', h3("Finally, let's have some fun with numbers in this 
 						section. Choose a year and a percentile (0 = Most Democratic, 100 = Most Republican.) See which county matches these parameters
 						 and how it has changed over time")
 						)
